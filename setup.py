@@ -1,7 +1,7 @@
 # pylint: disable=missing-module-docstring
 import re
+from importlib.metadata import PackageNotFoundError, version
 
-from pkg_resources import get_distribution, DistributionNotFound
 from setuptools import setup, find_packages
 
 long_description = """A library for image augmentation in machine learning experiments, particularly convolutional
@@ -22,39 +22,45 @@ INSTALL_REQUIRES = [
 ]
 
 ALT_INSTALL_REQUIRES = {
-    "opencv-python-headless": ["opencv-python", "opencv-contrib-python", "opencv-contrib-python-headless"],
+    "opencv-python-headless": [
+        "opencv-python",
+        "opencv-contrib-python",
+        "opencv-contrib-python-headless",
+    ],
 }
 
 
-def check_alternative_installation(install_require, alternative_install_requires):
-    """If some version version of alternative requirement installed, return alternative,
-    else return main.
-    """
-    for alternative_install_require in alternative_install_requires:
-        try:
-            alternative_pkg_name = re.split(r"[!<>=]", alternative_install_require)[0]
-            get_distribution(alternative_pkg_name)
-            return str(alternative_install_require)
-        except DistributionNotFound:
-            continue
+def is_installed(pkg_name: str) -> bool:
+    try:
+        version(pkg_name)
+        return True
+    except PackageNotFoundError:
+        return False
 
-    return str(install_require)
+
+def check_alternative_installation(main_req, alternatives):
+    """If an alternative package is already installed, use that instead."""
+    for alt in alternatives:
+        alt_pkg_name = re.split(r"[!<>=]", alt)[0]
+        if is_installed(alt_pkg_name):
+            return alt
+    return main_req
 
 
 def get_install_requirements(main_requires, alternative_requires):
-    """Iterates over all install requires
-    If an install require has an alternative option, check if this option is installed
-    If that is the case, replace the install require by the alternative to not install dual package"""
     install_requires = []
-    for main_require in main_requires:
-        if main_require in alternative_requires:
-            main_require = check_alternative_installation(main_require, alternative_requires.get(main_require))
-        install_requires.append(main_require)
-
+    for main_req in main_requires:
+        if main_req in alternative_requires:
+            main_req = check_alternative_installation(
+                main_req, alternative_requires[main_req]
+            )
+        install_requires.append(main_req)
     return install_requires
 
 
-INSTALL_REQUIRES = get_install_requirements(INSTALL_REQUIRES, ALT_INSTALL_REQUIRES)
+INSTALL_REQUIRES = get_install_requirements(
+    INSTALL_REQUIRES, ALT_INSTALL_REQUIRES
+)
 
 setup(
     name="imgaug",
@@ -68,14 +74,29 @@ setup(
     include_package_data=True,
     package_data={
         "": ["LICENSE", "README.md", "requirements.txt"],
-        "imgaug": ["DejaVuSans.ttf", "quokka.jpg", "quokka_annotations.json", "quokka_depth_map_halfres.png"],
-        "imgaug.checks": ["README.md"]
+        "imgaug": [
+            "DejaVuSans.ttf",
+            "quokka.jpg",
+            "quokka_annotations.json",
+            "quokka_depth_map_halfres.png",
+        ],
+        "imgaug.checks": ["README.md"],
     },
     license="MIT",
     description="Image augmentation library for deep neural networks",
     long_description=long_description,
-    keywords=["augmentation", "image", "deep learning", "neural network", "CNN", "machine learning",
-              "computer vision", "overfitting"],
+    long_description_content_type="text/plain",
+    python_requires=">=3.8",
+    keywords=[
+        "augmentation",
+        "image",
+        "deep learning",
+        "neural network",
+        "CNN",
+        "machine learning",
+        "computer vision",
+        "overfitting",
+    ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
@@ -84,15 +105,13 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Scientific/Engineering :: Image Recognition",
-        "Topic :: Software Development :: Libraries :: Python Modules"
-    ]
+        "Topic :: Software Development :: Libraries :: Python Modules",
+    ],
 )
